@@ -1,4 +1,4 @@
-import requests, pandas as pd
+import os, pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -22,7 +22,7 @@ def get_videos(driver):
 def get_data(videos):
   video_data = []
 
-  for index, video in enumerate(videos):
+  for index, video in enumerate(videos[:50]):
     # moves mouse to element and scrolls there
     webdriver.ActionChains(driver).move_to_element(video).perform()
 
@@ -30,21 +30,28 @@ def get_data(videos):
     title_tag = video.find_element(By.ID, 'video-title')
     video_title = title_tag.text
     video_URL = title_tag.get_attribute('href')
+
+    video_len = video.find_element(By.CLASS_NAME, 'style-scope ytd-thumbnail-overlay-time-status-renderer').text
+    
     channel_tag = video.find_element(By.CLASS_NAME,'style-scope ytd-channel-name')
     channel_name = channel_tag.text.split('\n')[0]
     channel_URL = channel_tag.find_element(By.TAG_NAME,'a').get_attribute('href')
+    
     video_desc = video.find_element(By.ID, "description-text").text
+    
     thumbnail = video.find_element(By.ID, 'img').get_attribute('src')
+    
     metadata = video.find_element(By.ID, 'metadata-line')
     views_timePosted = metadata.find_elements(By.TAG_NAME, "span")
     views = views_timePosted[0].text
-    timePosted = views_timePosted[1].text
+    timePosted = day_posted(views_timePosted[1].text)
 
     # add data to list of dictionaries
     video_data.append({ 
       "Date extracted":pd.to_datetime('today').strftime("%d/%b/%Y"),
       "Rank":index+1,
       "Title":video_title, 
+      "Video Length":video_len,
       "Channel":channel_name,
       "Time posted":timePosted,
       "Views":views,
@@ -58,6 +65,16 @@ def get_data(videos):
   data = pd.DataFrame(video_data)
   return(data)
 
+def day_posted(text):
+  if "Streamed" in text:
+    time = text.split()[1:-1]
+  else:
+    time = text.split()[:-1]
+  time_delta = pd.to_timedelta(time[0] + " " + time[1])
+
+  return((pd.to_datetime('today') - time_delta).strftime("%d/%b/%Y"))
+  
+  
 
 if __name__ == "__main__":
   
@@ -66,6 +83,12 @@ if __name__ == "__main__":
   data = get_data(videos)
 
   #add today's data to a csv but keep data in case you want to work on it further
-  data.to_csv('video_data.csv', mode='a', header=False, index=False)
+  data.to_csv('~/scraping/data/video_data.csv', mode='w', header=True, index=False)
+
+  os.system("kaggle datasets version -p ~/scraping/data -m 'Updates everyday'")
 
   print('Finished')
+
+
+
+
