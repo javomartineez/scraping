@@ -88,7 +88,3 @@ if __name__ == "__main__":
   os.system("kaggle datasets version -p ~/scraping/data -m 'Updates everyday'")
 
   print('Finished')
-
-
-
-
